@@ -1,5 +1,7 @@
 # Copyright (c) 2008 Luis Rei
 #
+# 2011 - Modifications by Adam Morris
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -22,13 +24,13 @@
 # - was only tested on MacOS X (10.5)
 # - not "carefully" developed e.g. poor exception handling, little testing, ...
 # - see also http://wordpress.com/blog/2006/06/12/xml-import-export/
-import string, os, sys, getopt
+import os, sys, getopt, time
 from xml.dom import minidom
 __author__ = 'Luis Rei (luis.rei@gmail.com)'
 __homepage__ = 'http://luisrei.com'
 __version__ = '1.0'
 __date__ = '2008/03/23'
-def convert(infile, outdir, authorDirs, categoryDirs):
+def convert(infile, outdir, splitByYear, categoryDirs):
     """Convert WordPress Export File to multiple html files.
     Keyword arguments:
     infile -- the location of the WordPress Export File
@@ -40,10 +42,18 @@ def convert(infile, outdir, authorDirs, categoryDirs):
     # Each post is a dictionary
     dom = minidom.parse(infile)
     blog = [] # list that will contain all posts
+    firstYear = None
+    lastYear = None
     for node in dom.getElementsByTagName('item'):
         post = dict()
         post["title"] = node.getElementsByTagName('title')[0].firstChild.data
         post["date"] = node.getElementsByTagName('pubDate')[0].firstChild.data
+        post["time"] = time.strftime("%Y%m%dT%H%M%SZ",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000"))
+        post["year"] = int(time.strftime("%Y",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000")))
+        if firstYear == None or post["year"] < firstYear:
+            firstYear = post["year"]
+        if lastYear == None  or post["year"] > lastYear:
+            lastYear = post["year"]
         post["author"] = node.getElementsByTagName(
                         'dc:creator')[0].firstChild.data
         post["id"] = node.getElementsByTagName('wp:post_id')[0].firstChild.data
@@ -67,66 +77,68 @@ def convert(infile, outdir, authorDirs, categoryDirs):
     if os.path.exists(outdir) == False:
         os.makedirs(outdir)
     os.chdir(outdir)
+    files = {}
+    if splitByYear:
+        for i in range(firstYear,lastYear+1):
+            filename = "{0}.enex".format(i)
+            files[i] = open(filename, 'w')
+    else:
+        files[0] = open("wordpress.enex", 'w')
+    header = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export.dtd">
+<en-export export-date="{0}" application="Evernote" version="Evernote Mac 2.2.1 (154267)">
+""".format(time.strftime("%Y%m%dT%H%M%SZ",time.gmtime()))
+    for f in files:
+        files[f].write(header)
     for post in blog:
-        # The "category" directories
-        path = ""
-        if authorDirs == True:
-            path += post["author"].encode('utf-8') + "/"
-        # This creates a path for the file in the format
-        # category1/category2/category3/file. Note that the category list was
-        # sorted.
-        if categoryDirs == True:
-            if (post["categories"] != None):
-                path += string.join(post["categories"],"/")
-        if os.path.exists(path) == False and path != "":
-            os.makedirs(path)
-        # And finally the file itself
-        path = outdir + path
-        title = post["title"].encode('utf-8')
-        filename = path + "/" + post["id"] + ' - ' + title \
-                    + '.html'
         # Add a meta tag to specify charset (UTF-8) in the HTML file
-        meta = """"""
-        f = open(filename, 'w')
-        f.write(meta+"\n")
-        # Add "HTML header"
-        start = "\n\n\n\n\n"
-        f.write(start)
+        meta = """\n<note><title>{0}</title>""".format(post["title"].encode('utf-8').replace("&","+"))
+        start = """<content><![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
+<en-note>"""
+        files[post["year"] if splitByYear else 0].write(meta+start+"\n")
         # Convert the unicode object to a string that can be written to a file
         # with the proper encoding (UTF-8)
         text = post["text"].encode('utf-8')
-        # Replace simple newlines with
-        # + newline so that the HTML file
-        # represents the original post more accuratelly
-        text = text.replace("\n", """
-\n""")
-        f.write(text)
+        # Replace simple newlines with + newline so that the HTML file
+        # represents the original post more accurately
+        text = text.replace("\n","<br/>\n")
+        files[post["year"] if splitByYear else 0].write(text)
         # Finalize HTML
-        end = "\n\n"
-        f.write(end)
-        f.close()
+        end = "\n</en-note>\n]]></content><created>{0}</created><updated>{0}</updated>".format(post["time"])
+        if categoryDirs == True:
+            if (post["categories"] != None):
+                for category in post["categories"]:
+                    end += "<tag>{0}</tag>".format(category.title())
+        end += "<note-attributes/></note>"
+        files[post["year"] if splitByYear else 0].write(end)
+    lastend="\n</en-export>"
+    for f in files:
+        files[f].write(lastend)
+        files[f].close()
+
 def usage(pname):
     """Displays usage information
     keyword arguments:
     pname -- program name (e.g. obtained as argv[0])
     """
-    print """python %s [-hac] [-o outdir] infile
+    print """python {0} [-hac] [-o outdir] infile
     Converts a WordPress Export File to multiple html files.
     Options:
         -h,--help\tDisplays this information.
-        -a,--authors\tCreate different directories for each author.
+        -y,--create separte files by year
         -c,--categories\tCreate directory structure from post categories.
         -o,--outdir\tSpecify a directory for the output.
     Example:
-    python %s -c -o ~/TEMP ~/wordpress.2008-03-20.xml
-        """ % (pname, pname)
+    python {1} -y -c -o ~/TEMP ~/wordpress.2008-03-20.xml
+    """.format(pname, pname)
+
 def main(argv):
     outdir = ""
-    authors = False
+    splitByYear = False
     categories = False
     try:
-        opts, args = getopt.getopt(
-            argv[1:], "ha:o:c", ["help", "authors", "outdir", "categories"])
+        opts, args = getopt.getopt(argv[1:], "hy:o:c", ["help", "year", "outdir", "categories"])
     except getopt.GetoptError, err:
         print str(err)
         usage(argv[0])
@@ -135,8 +147,8 @@ def main(argv):
         if opt in ("-h", "--help"):
             usage(argv[0])
             sys.exit()
-        elif opt in ("-a", "--authors"):
-            authors = True
+        elif opt in ("-y", "--year"):
+            splitByYear = True
         elif opt in ("-c", "--categories"):
             categories = True
         elif opt in ("-o", "--outdir"):
@@ -149,6 +161,6 @@ def main(argv):
     if outdir == "":
         # Use the current directory
         outdir = os.getcwd()
-    convert(infile, outdir, authors, categories)
+    convert(infile, outdir, splitByYear, categories)
 if __name__ == "__main__":
     main(sys.argv)

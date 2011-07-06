@@ -1,0 +1,17 @@
+This script is a branch from Luis Rei's wordpress.py
+
+http://luisrei.com/2008/03/24/out-of-wordpresscom-and-into-evernotecom
+
+It will convert a wordpress export into a file that can be imported into Evernote.  This branch adds a feature to create a single evernote import file (instead of multiple html files).  Note tags are made up of both categories and tags.  Haven't tested without the -c option.
+
+Usage:
+
+python wordpress.py [-hac] [-o outdir] infile
+    Converts a WordPress Export File to multiple html files.
+    Options:
+        -h,--help	Displays this information.
+        -y,--create separte files by year
+        -c,--categories	Create directory structure from post categories.
+        -o,--outdir	Specify a directory for the output.
+    Example:
+    python wordpress.py -y -c -o ~/TEMP ~/wordpress.2008-03-20.xml
