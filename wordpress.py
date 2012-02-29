@@ -46,22 +46,17 @@ def convert(infile, outdir, splitByYear, categoryDirs):
     lastYear = None
     for node in dom.getElementsByTagName('item'):
         post = dict()
-        post["title"] = node.getElementsByTagName('title')[0].firstChild.data
-        post["date"] = node.getElementsByTagName('pubDate')[0].firstChild.data
-        post["time"] = time.strftime("%Y%m%dT%H%M%SZ",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000"))
-        post["year"] = int(time.strftime("%Y",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000")))
-        if firstYear == None or post["year"] < firstYear:
+        post["title"] = node.getElementsByTagName('title')[0].firstChild.data if node.getElementsByTagName('title')[0].firstChild else ''
+        post["date"] = node.getElementsByTagName('pubDate')[0].firstChild.data if node.getElementsByTagName('pubDate')[0].firstChild else ''
+        post["time"] = time.strftime("%Y%m%dT%H%M%SZ",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000")) if post["date"] else ''
+        post["year"] = int(time.strftime("%Y",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000"))) if post["date"] else ''
+        if post["year"] and (firstYear == None or post["year"] < firstYear):
             firstYear = post["year"]
-        if lastYear == None  or post["year"] > lastYear:
+        if post["year"]  and (lastYear == None  or post["year"] > lastYear):
             lastYear = post["year"]
-        post["author"] = node.getElementsByTagName(
-                        'dc:creator')[0].firstChild.data
-        post["id"] = node.getElementsByTagName('wp:post_id')[0].firstChild.data
-        if node.getElementsByTagName('content:encoded')[0].firstChild != None:
-            post["text"] = node.getElementsByTagName(
-                            'content:encoded')[0].firstChild.data
-        else:
-            post["text"] = ""
+        post["author"] = node.getElementsByTagName('dc:creator')[0].firstChild.data if node.getElementsByTagName('dc:creator')[0].firstChild else ''
+        post["id"] = node.getElementsByTagName('wp:post_id')[0].firstChild.data if node.getElementsByTagName('wp:post_id')[0].firstChild else ''
+        post["text"] = node.getElementsByTagName('content:encoded')[0].firstChild.data if node.getElementsByTagName('content:encoded')[0].firstChild else ''
         # wp:attachment_url could be use to download attachments
         # Get the categories
         tempCategories = []
@@ -74,7 +69,7 @@ def convert(infile, outdir, splitByYear, categoryDirs):
     # Then we create the directories and HTML files from the list of posts.
     # The "base" directory
     outdir += "/wordpress/"
-    if os.path.exists(outdir) == False:
+    if not os.path.exists(outdir):
         os.makedirs(outdir)
     os.chdir(outdir)
     files = {}
@@ -106,8 +101,8 @@ def convert(infile, outdir, splitByYear, categoryDirs):
         files[post["year"] if splitByYear else 0].write(text)
         # Finalize HTML
         end = "\n</en-note>\n]]></content><created>{0}</created><updated>{0}</updated>".format(post["time"])
-        if categoryDirs == True:
-            if (post["categories"] != None):
+        if categoryDirs:
+            if post["categories"] != None:
                 for category in post["categories"]:
                     end += "<tag>{0}</tag>".format(category.title())
         end += "<note-attributes/></note>"
