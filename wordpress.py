@@ -44,10 +44,22 @@ def convert(infile, outdir, splitByYear, categoryDirs):
     blog = [] # list that will contain all posts
     firstYear = None
     lastYear = None
+    
     for node in dom.getElementsByTagName('item'):
+        #Fix bug with negative years, which have unspecified behaviour in ISO standard. Causes a crash due to the formatter not expecting a negative sign before the year digits
+        
+        #Split date by spaces into it's componenents (weekday, month day, month, year, etc)
+        rawDate = node.getElementsByTagName('pubDate')[0].firstChild.data.split(" ")
+        
+        #Strip negative sign from date
+        rawDate[3] = rawDate[3].lstrip("-")
+        
+        #Join array back into a string
+        sanitizedDate = ' '.join(rawDate)
+        
         post = dict()
         post["title"] = node.getElementsByTagName('title')[0].firstChild.data if node.getElementsByTagName('title')[0].firstChild else ''
-        post["date"] = node.getElementsByTagName('pubDate')[0].firstChild.data if node.getElementsByTagName('pubDate')[0].firstChild else ''
+        post["date"] = sanitizedDate if sanitizedDate else ''
         post["time"] = time.strftime("%Y%m%dT%H%M%SZ",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000")) if post["date"] else ''
         post["year"] = int(time.strftime("%Y",time.strptime(post["date"], "%a, %d %b %Y %H:%M:%S +0000"))) if post["date"] else ''
         if post["year"] and (firstYear == None or post["year"] < firstYear):
