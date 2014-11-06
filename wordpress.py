@@ -145,7 +145,7 @@ def main(argv):
     splitByYear = False
     categories = False
     try:
-        opts, args = getopt.getopt(argv[1:], "hy:o:c", ["help", "year", "outdir", "categories"])
+        opts, args = getopt.getopt(argv[1:], "hyo:c", ["help", "year", "outdir", "categories"])
     except getopt.GetoptError, err:
         print str(err)
         usage(argv[0])
