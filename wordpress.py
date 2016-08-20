@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*- 
+#! python 
 # Copyright (c) 2008 Luis Rei
 #
 # 2011 - Modifications by Adam Morris
@@ -24,12 +26,14 @@
 # - was only tested on MacOS X (10.5)
 # - not "carefully" developed e.g. poor exception handling, little testing, ...
 # - see also http://wordpress.com/blog/2006/06/12/xml-import-export/
-import os, sys, getopt, time
+import os, sys, getopt, time, urllib
 from xml.dom import minidom
 __author__ = 'Luis Rei (luis.rei@gmail.com)'
 __homepage__ = 'http://luisrei.com'
 __version__ = '1.0'
 __date__ = '2008/03/23'
+reload(sys)
+sys.setdefaultencoding( "utf-8" )
 def convert(infile, outdir, splitByYear, categoryDirs):
     """Convert WordPress Export File to multiple html files.
     Keyword arguments:
@@ -116,7 +120,7 @@ def convert(infile, outdir, splitByYear, categoryDirs):
         if categoryDirs:
             if post["categories"] != None:
                 for category in post["categories"]:
-                    end += "<tag>{0}</tag>".format(category.title())
+                    end += "<tag>{0}</tag>".format(urllib.unquote(str(category.title())).decode('utf-8'))
         end += "<note-attributes/></note>"
         files[post["year"] if splitByYear else 0].write(end)
     lastend="\n</en-export>"

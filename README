@@ -15,3 +15,8 @@ python wordpress.py [-hac] [-o outdir] infile
         -o,--outdir	Specify a directory for the output.
     Example:
     python wordpress.py -y -c -o ~/TEMP ~/wordpress.2008-03-20.xml
+    
+    
+## utf-8编码
+
+最终解决方法-> http://www.crifan.com/python_urllib_unquote_messy_issue/
